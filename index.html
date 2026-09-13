@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Dashboard de tasas de cambio Venezuela: BCV, Euro, Binance. Conversor múltiple, alertas y notificaciones push." />
+<meta name="theme-color" content="#10b981" />
+<title>Dashboard Tasas Venezuela 🇻🇪 | BCV · Euro · Binance</title>
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇻🇪</text></svg>" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        animation: {
+          'slide-up': 'slideUp 0.4s ease-out',
+          'pulse-slow': 'pulse 3s infinite',
+          'bell-shake': 'bellShake 0.6s ease-in-out',
+        },
+        keyframes: {
+          slideUp: {
+            '0%': { opacity: 0, transform: 'translateY(10px)' },
+            '100%': { opacity: 1, transform: 'translateY(0)' },
+          },
+          bellShake: {
+            '0%,100%': { transform: 'rotate(0)' },
+            '25%': { transform: 'rotate(-12deg)' },
+            '75%': { transform: 'rotate(12deg)' },
+          },
+        },
+      },
+    },
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .glass {
+    background: rgba(255,255,255,.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .dark .glass { background: rgba(17,24,39,.7); }
+  .skeleton {
+    background: linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  .dark .skeleton {
+    background: linear-gradient(90deg,#374151 25%,#4b5563 50%,#374151 75%);
+    background-size: 200% 100%;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .chart-container { position: relative; height: 320px; width: 100%; }
+  @media (max-width: 640px) { .chart-container { height: 240px; } }
+
+  /* Toggle switch */
+  .switch { position: relative; width: 44px; height: 24px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background-color: #cbd5e1; transition: .3s; border-radius: 999px;
+  }
+  .slider:before {
+    position: absolute; content: ""; height: 18px; width: 18px;
+    left: 3px; bottom: 3px; background: white; transition: .3s; border-radius: 50%;
+  }
+  input:checked + .slider { background-color: #10b981; }
+  input:checked + .slider:before { transform: translateX(20px); }
+</style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 glass border-b border-slate-200/50 dark:border-slate-700/50">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 via-blue-500 to-red-500 flex items-center justify-center text-xl shadow-lg">🇻🇪</div>
+      <div>
+        <h1 class="text-lg sm:text-xl font-extrabold leading-tight">Dashboard Tasas VE</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">BCV · Euro · Binance en tiempo real</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="notifPermissionBtn" aria-label="Activar notificaciones"
+        class="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-semibold text-sm transition-all">
+        🔔 <span class="hidden md:inline" id="notifPermLabel">Activar notif.</span>
+      </button>
+
+      <button id="installBtn" class="hidden items-center gap-2 px-3 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 active:scale-95 text-white font-semibold text-sm shadow-md transition-all">
+        ⬇️ <span class="hidden sm:inline">Instalar</span>
+      </button>
+
+      <button id="refreshBtn" aria-label="Actualizar tasas"
+        class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-semibold text-sm shadow-md transition-all">
+        <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span class="hidden sm:inline">Actualizar</span>
+      </button>
+
+      <button id="themeToggle" aria-label="Cambiar tema"
+        class="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 flex items-center justify-center transition-all">
+        <span id="themeIcon">🌙</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="max-w-7xl mx-auto px-4 py-6 sm:py-8 space-y-8">
+
+  <!-- STATUS BAR -->
+  <section class="flex flex-wrap items-center justify-between gap-3 text-sm">
+    <div class="flex items-center gap-2">
+      <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-slate-400 animate-pulse-slow"></span>
+      <span id="statusText" class="text-slate-500 dark:text-slate-400">Cargando tasas...</span>
+    </div>
+    <div class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
+      🕐 Última actualización: <span id="lastUpdate" class="font-semibold">—</span>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- TASAS CARDS -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+    <article class="animate-slide-up rounded-2xl p-5 sm:p-6 shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-xl">🏛️</div>
+          <div><h2 class="font-bold text-slate-900 dark:text-white">BCV</h2><p class="text-xs text-slate-500 dark:text-slate-400">Dólar Oficial</p></div>
+        </div>
+        <span id="trend-bcv" class="text-xs font-semibold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500">—</span>
+      </div>
+      <div class="mb-3"><div id="value-bcv" class="skeleton h-10 rounded-lg"></div></div>
+      <button data-copy="bcv" class="copy-btn text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">📋 Copiar tasa</button>
+    </article>
+
+    <article class="animate-slide-up rounded-2xl p-5 sm:p-6 shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur relative overflow-hidden" style="animation-delay:.1s">
+      <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xl">💶</div>
+          <div><h2 class="font-bold text-slate-900 dark:text-white">Euro</h2><p class="text-xs text-slate-500 dark:text-slate-400">BCV Oficial</p></div>
+        </div>
+        <span id="trend-euro" class="text-xs font-semibold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500">—</span>
+      </div>
+      <div class="mb-3"><div id="value-euro" class="skeleton h-10 rounded-lg"></div></div>
+      <button data-copy="euro" class="copy-btn text-xs text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">📋 Copiar tasa</button>
+    </article>
+
+    <article class="animate-slide-up rounded-2xl p-5 sm:p-6 shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur relative overflow-hidden sm:col-span-2 lg:col-span-1" style="animation-delay:.2s">
+      <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-orange-500"></div>
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-xl">🪙</div>
+          <div><h2 class="font-bold text-slate-900 dark:text-white">Binance</h2><p class="text-xs text-slate-500 dark:text-slate-400">USDT Paralelo</p></div>
+        </div>
+        <span id="trend-binance" class="text-xs font-semibold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500">—</span>
+      </div>
+      <div class="mb-3"><div id="value-binance" class="skeleton h-10 rounded-lg"></div></div>
+      <button data-copy="binance" class="copy-btn text-xs text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">📋 Copiar tasa</button>
+    </article>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- CONVERSOR MÚLTIPLE -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <section class="rounded-2xl p-5 sm:p-7 shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur animate-slide-up">
+    <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-lg shadow-md">🔄</div>
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold">Conversor Múltiple</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Escribe un monto y ve la conversión simultánea en las 3 tasas</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input principal -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-6">
+      <div class="md:col-span-2">
+        <label for="multiAmount" class="block text-sm font-semibold mb-2 text-slate-600 dark:text-slate-300">Monto</label>
+        <input id="multiAmount" type="text" inputmode="decimal" value="100"
+          class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-lg font-semibold focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all"
+          placeholder="0.00" />
+      </div>
+      <div>
+        <label for="multiFrom" class="block text-sm font-semibold mb-2 text-slate-600 dark:text-slate-300">Unidad base</label>
+        <select id="multiFrom" class="w-full px-3 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-semibold focus:border-cyan-500 outline-none transition-all cursor-pointer">
+          <option value="VES">Bs (VES)</option>
+          <option value="USD" selected>USD ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="USDT">USDT (₮)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Grid de resultados simultáneos -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="rounded-xl p-4 border-2 border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">🏛️ BCV · USD</span>
+          <button data-copy-multi="bcv" class="copy-multi-btn text-xs opacity-60 hover:opacity-100">📋</button>
+        </div>
+        <p id="multi-bcv" class="text-xl sm:text-2xl font-extrabold text-emerald-700 dark:text-emerald-300 tabular-nums break-all">—</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="multi-bcv-sub">—</p>
+      </div>
+
+      <div class="rounded-xl p-4 border-2 border-blue-200 dark:border-blue-800/60 bg-blue-50/70 dark:bg-blue-950/30">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">💶 Euro</span>
+          <button data-copy-multi="euro" class="copy-multi-btn text-xs opacity-60 hover:opacity-100">📋</button>
+        </div>
+        <p id="multi-euro" class="text-xl sm:text-2xl font-extrabold text-blue-700 dark:text-blue-300 tabular-nums break-all">—</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="multi-euro-sub">—</p>
+      </div>
+
+      <div class="rounded-xl p-4 border-2 border-amber-200 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">🪙 Binance · USDT</span>
+          <button data-copy-multi="binance" class="copy-multi-btn text-xs opacity-60 hover:opacity-100">📋</button>
+        </div>
+        <p id="multi-binance" class="text-xl sm:text-2xl font-extrabold text-amber-700 dark:text-amber-300 tabular-nums break-all">—</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="multi-binance-sub">—</p>
+      </div>
+
+      <div class="rounded-xl p-4 border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">💰 Equivalente</span>
+        </div>
+        <p id="multi-equiv" class="text-xl sm:text-2xl font-extrabold text-slate-700 dark:text-slate-200 tabular-nums break-all">—</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Valor base en Bs</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- TABLA COMPARATIVA -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <section class="rounded-2xl p-5 sm:p-7 shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur animate-slide-up">
+    <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-lg shadow-md">🧾</div>
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold">Tabla Comparativa</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">¿Cuánto obtienes según cada tasa?</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <label class="font-semibold text-slate-600 dark:text-slate-300">Monto:</label>
+        <input id="compareAmount" type="text" inputmode="decimal" value="100"
+          class="w-24 px-3 py-1.5 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-bold focus:border-rose-500 outline-none transition-all text-center" />
+        <select id="compareCurrency" class="px-3 py-1.5 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-bold focus:border-rose-500 outline-none cursor-pointer">
+          <option value="USD" selected>USD</option>
+          <option value="EUR">EUR</option>
+          <option value="USDT">USDT</option>
+          <option value="VES">Bs</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-100 dark:bg-slate-900/70">
+          <tr class="text-left">
+            <th class="px-4 py-3 font-bold text-slate-600 dark:text-slate-300">Tasa</th>
+            <th class="px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-right">Valor (Bs)</th>
+            <th class="px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-right">Obtienes</th>
+            <th class="px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-right">Diferencia</th>
+            <th class="px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-center">Mejor</th>
+          </tr>
+        </thead>
+        <tbody id="compareTableBody" class="divide-y divide-slate-200 dark:divide-slate-700">
+          <tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="text-xs text-slate-500 dark:text-slate-400 mt-3">
+      💡 "Obtienes" muestra el resultado al convertir tu monto usando cada tasa. La fila con ⭐ es la más conveniente.
+    </p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ALERTAS -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <section class="rounded-2xl p-5 sm:p-7 shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur animate-slide-up">
+    <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center text-lg shadow-md">🔔</div>
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold">Alertas de Tasa</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Recibe avisos cuando una tasa cruce un umbral</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="switch">
+          <input type="checkbox" id="alertsEnabled">
+          <span class="slider"></span>
+        </label>
+        <span class="text-sm font-semibold" id="alertsEnabledLabel">Desactivadas</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+      <div class="rounded-xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+        <label class="block text-xs font-bold uppercase text-emerald-600 dark:text-emerald-400 mb-2">🏛️ BCV · Umbral (Bs)</label>
+        <input type="number" id="alertThreshold-bcv" min="0" step="0.01" placeholder="Ej: 50"
+          class="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-bold focus:border-emerald-500 outline-none" />
+      </div>
+      <div class="rounded-xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+        <label class="block text-xs font-bold uppercase text-blue-600 dark:text-blue-400 mb-2">💶 Euro · Umbral (Bs)</label>
+        <input type="number" id="alertThreshold-euro" min="0" step="0.01" placeholder="Ej: 55"
+          class="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-bold focus:border-blue-500 outline-none" />
+      </div>
+      <div class="rounded-xl p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+        <label class="block text-xs font-bold uppercase text-amber-600 dark:text-amber-400 mb-2">🪙 Binance · Umbral (Bs)</label>
+        <input type="number" id="alertThreshold-binance" min="0" step="0.01" placeholder="Ej: 60"
+          class="w-full px-3 py-2 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 font-bold focus:border-amber-500 outline-none" />
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 mb-4">
+      <label class="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
+        <input type="radio" name="alertDirection" value="above" checked class="accent-emerald-500">
+        Al superar
+      </label>
+      <label class="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 cursor-pointer ml-3">
+        <input type="radio" name="alertDirection" value="below" class="accent-emerald-500">
+        Al bajar de
+      </label>
+    </div>
+
+    <div id="alertEvents" class="space-y-2 max-h-60 overflow-y-auto">
+      <p class="text-sm text-slate-400 text-center py-3">Sin eventos de alerta</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- GRÁFICO 24H -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <section class="rounded-2xl p-5 sm:p-6 shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur animate-slide-up">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-lg shadow-md">📈</div>
+        <div>
+          <h2 class="text-lg font-bold">Tendencia</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Evolución de las 3 tasas</p>
+        </div>
+      </div>
+      <div class="flex gap-2 text-xs">
+        <button data-range="24" class="range-btn px-3 py-1.5 rounded-lg bg-indigo-500 text-white font-semibold">24h</button>
+        <button data-range="168" class="range-btn px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold">7d</button>
+        <button data-range="720" class="range-btn px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold">30d</button>
+      </div>
+    </div>
+    <div class="chart-container">
+      <canvas id="trendChart"></canvas>
+    </div>
+    <p id="chartEmpty" class="hidden text-sm text-slate-400 text-center py-8">Sin datos suficientes. Vuelve más tarde para ver la tendencia. 📊</p>
+  </section>
+
+  <!-- HISTORIAL -->
+  <section class="rounded-2xl p-5 sm:p-6 shadow-lg border border-slate-200/50 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur animate-slide-up">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center text-lg shadow-md">📊</div>
+        <div>
+          <h2 class="text-lg font-bold">Historial del día</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Cambios registrados hoy</p>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button id="exportCSV" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-all font-semibold">📥 Exportar CSV</button>
+        <button id="clearHistory" class="text-xs px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all font-semibold">🗑️ Limpiar</button>
+      </div>
+    </div>
+    <div id="historyList" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+      <p class="text-sm text-slate-400 text-center py-4">Sin registros todavía</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+  <p>Datos obtenidos de <a href="https://ve.dolarapi.com" target="_blank" class="underline hover:text-emerald-500">dolarapi.com</a> y <a href="https://pydolarve.org" target="_blank" class="underline hover:text-emerald-500">pydolarve.org</a></p>
+  <p class="mt-1">⚠️ Tasas referenciales. Verifica antes de operar.</p>
+  <p class="mt-1" id="swStatus">🔌 Service Worker: iniciando...</p>
+</footer>
+
+<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 px-5 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-50"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CONFIGURACIÓN
+   ═══════════════════════════════════════════════════════════ */
+const CONFIG = {
+  apis: {
+    bcv:     ['https://ve.dolarapi.com/v1/dolares/oficial', 'https://pydolarve.org/api/v1/dollar?page=bcv'],
+    euro:    ['https://ve.dolarapi.com/v1/euros/oficial', 'https://pydolarve.org/api/v1/euro?page=bcv'],
+    binance: ['https://ve.dolarapi.com/v1/dolares/paralelo', 'https://pydolarve.org/api/v1/dollar?page=enparalelovzla'],
+  },
+  refreshIntervalMs: 15 * 60 * 1000,
+  storageKeys: {
+    rates: 'vzla_rates_cache',
+    history: 'vzla_history',
+    theme: 'vzla_theme',
+    alerts: 'vzla_alerts_config',
+    alertEvents: 'vzla_alert_events',
+  },
+  historyRetentionMs: 7 * 24 * 60 * 60 * 1000,
+};
+
+/* ═══════════════════════════════════════════════════════════
+   ESTADO GLOBAL
+   ═══════════════════════════════════════════════════════════ */
+const state = {
+  rates: { bcv: null, euro: null, binance: null },
+  previousRates: {},
+  history: [],
+  loading: false,
+  chart: null,
+  chartRange: 24,
+  alerts: {
+    enabled: false,
+    direction: 'above',
+    thresholds: { bcv: null, euro: null, binance: null },
+    // Para no spamear: guarda si ya notificamos por esta tasa
+    lastTriggered: { bcv: null, euro: null, binance: null },
+  },
+  alertEvents: [],
+};
+
+/* ═══════════════════════════════════════════════════════════
+   UTILIDADES
+   ═══════════════════════════════════════════════════════════ */
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const fmtVES = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtUSD = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+function formatBs(n) { return fmtVES.format(n) + ' Bs'; }
+function formatUsd(n) { return '$ ' + fmtUSD.format(n); }
+function formatEur(n) { return '€ ' + fmtUSD.format(n); }
+
+function parseAmount(str) {
+  if (!str) return 0;
+  const clean = String(str).replace(/\s/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.');
+  const n = parseFloat(clean);
+  return isNaN(n) ? 0 : n;
+}
+
+function showToast(msg, type = 'info') {
+  const t = $('#toast');
+  const colors = { info: 'bg-slate-900 dark:bg-white', success: 'bg-emerald-500', error: 'bg-red-500', warn: 'bg-amber-500' };
+  t.className = `fixed bottom-5 left-1/2 -translate-x-1/2 px-5 py-3 rounded-xl ${colors[type] || colors.info} text-white dark:text-slate-900 font-semibold text-sm shadow-2xl transition-all duration-300 z-50 opacity-100`;
+  t.textContent = msg;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => { t.style.opacity = '0'; }, 2500);
+}
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PERSISTENCIA
+   ═══════════════════════════════════════════════════════════ */
+function saveRates(rates) {
+  try { localStorage.setItem(CONFIG.storageKeys.rates, JSON.stringify({ rates, ts: Date.now() })); }
+  catch (e) { console.warn(e); }
+}
+function loadCachedRates() {
+  try {
+    const raw = localStorage.getItem(CONFIG.storageKeys.rates);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(CONFIG.storageKeys.history);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    const cutoff = Date.now() - CONFIG.historyRetentionMs;
+    return data.filter(h => h.ts >= cutoff);
+  } catch { return []; }
+}
+function saveHistory() {
+  try { localStorage.setItem(CONFIG.storageKeys.history, JSON.stringify(state.history)); }
+  catch (e) { console.warn(e); }
+}
+function pushHistory(entry) {
+  const last = state.history[0];
+  if (last && (entry.ts - last.ts) < 30000 &&
+      last.rates.bcv === entry.rates.bcv &&
+      last.rates.euro === entry.rates.euro &&
+      last.rates.binance === entry.rates.binance) return;
+  state.history.unshift(entry);
+  if (state.history.length > 2000) state.history.length = 2000;
+  saveHistory();
+  renderHistory();
+  renderChart();
+}
+
+function saveAlerts() {
+  try { localStorage.setItem(CONFIG.storageKeys.alerts, JSON.stringify(state.alerts)); }
+  catch (e) { console.warn(e); }
+}
+function loadAlerts() {
+  try {
+    const raw = localStorage.getItem(CONFIG.storageKeys.alerts);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function saveAlertEvents() {
+  try { localStorage.setItem(CONFIG.storageKeys.alertEvents, JSON.stringify(state.alertEvents.slice(0, 100))); }
+  catch (e) { console.warn(e); }
+}
+function loadAlertEvents() {
+  try {
+    const raw = localStorage.getItem(CONFIG.storageKeys.alertEvents);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch { return []; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FETCHERS
+   ═══════════════════════════════════════════════════════════ */
+async function fetchRate(key) {
+  const urls = CONFIG.apis[key];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const price = extractPrice(key, data);
+      if (price && !isNaN(price)) return price;
+    } catch (e) { console.warn(`Fallo ${key}:`, e.message); }
+  }
+  return null;
+}
+
+function extractPrice(key, data) {
+  if (typeof data === 'number') return data;
+  if (data.price !== undefined) return parseFloat(data.price);
+  if (data.promedio !== undefined) return parseFloat(data.promedio);
+  if (data.monitors?.bcv?.price) return parseFloat(data.monitors.bcv.price);
+  if (data.monitors?.enparalelovzla?.price) return parseFloat(data.monitors.enparalelovzla.price);
+  if (data.monitors?.euro?.price) return parseFloat(data.monitors.euro.price);
+  if (data.rate !== undefined) return parseFloat(data.rate);
+  return null;
+}
+
+async function fetchAllRates() {
+  if (state.loading) return;
+  state.loading = true;
+  setStatus('loading', 'Actualizando tasas...');
+
+  try {
+    const [bcv, euro, binance] = await Promise.all([
+      fetchRate('bcv'), fetchRate('euro'), fetchRate('binance'),
+    ]);
+
+    state.previousRates = { ...state.rates };
+    if (bcv) state.rates.bcv = bcv;
+    if (euro) state.rates.euro = euro;
+    if (binance) state.rates.binance = binance;
+
+    const updated = bcv || euro || binance;
+
+    if (updated) {
+      saveRates(state.rates);
+      renderRates();
+      updateAll();
+      pushHistory({ ts: Date.now(), day: todayKey(), rates: { ...state.rates } });
+      checkAlerts();
+      setStatus('ok', 'Tasas actualizadas');
+      setLastUpdate(new Date());
+    } else {
+      const cached = loadCachedRates();
+      if (cached) {
+        state.rates = cached.rates;
+        renderRates();
+        updateAll();
+        setStatus('warn', 'Sin conexión · usando caché');
+        setLastUpdate(new Date(cached.ts));
+      } else {
+        setStatus('error', 'No se pudieron cargar las tasas');
+      }
+    }
+  } catch (e) {
+    console.error(e);
+    setStatus('error', 'Error al cargar');
+  } finally {
+    state.loading = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDERIZADO
+   ═══════════════════════════════════════════════════════════ */
+function setStatus(type, text) {
+  const dot = $('#statusDot');
+  $('#statusText').textContent = text;
+  const colors = { ok: 'bg-emerald-500', loading: 'bg-blue-500 animate-pulse', warn: 'bg-amber-500', error: 'bg-red-500' };
+  dot.className = `w-2.5 h-2.5 rounded-full ${colors[type] || 'bg-slate-400'}`;
+}
+function setLastUpdate(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  $('#lastUpdate').textContent = d.toLocaleString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+function trendBadge(key) {
+  const prev = state.previousRates[key];
+  const curr = state.rates[key];
+  const el = $(`#trend-${key}`);
+  if (!prev || !curr || prev === curr) {
+    el.textContent = '—';
+    el.className = 'text-xs font-semibold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500';
+    return;
+  }
+  const diff = ((curr - prev) / prev) * 100;
+  if (diff > 0.01) {
+    el.textContent = `▲ ${diff.toFixed(2)}%`;
+    el.className = 'text-xs font-semibold px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400';
+  } else if (diff < -0.01) {
+    el.textContent = `▼ ${Math.abs(diff).toFixed(2)}%`;
+    el.className = 'text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400';
+  } else {
+    el.textContent = '= 0.00%';
+    el.className = 'text-xs font-semibold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500';
+  }
+}
+function renderRates() {
+  const map = {
+    bcv: { color: 'text-emerald-600 dark:text-emerald-400', label: 'Bs / USD' },
+    euro: { color: 'text-blue-600 dark:text-blue-400', label: 'Bs / EUR' },
+    binance: { color: 'text-amber-600 dark:text-amber-400', label: 'Bs / USDT' },
+  };
+  Object.keys(map).forEach(key => {
+    const val = state.rates[key];
+    const el = $(`#value-${key}`);
+    if (val) {
+      el.classList.remove('skeleton');
+      el.className = `text-3xl sm:text-4xl font-extrabold ${map[key].color} tabular-nums`;
+      el.innerHTML = `${fmtVES.format(val)}<span class="text-sm font-semibold text-slate-500 dark:text-slate-400 ml-2">${map[key].label}</span>`;
+    } else {
+      el.classList.add('skeleton');
+      el.textContent = '';
+    }
+    trendBadge(key);
+  });
+}
+
+function renderHistory() {
+  const list = $('#historyList');
+  const today = todayKey();
+  const todayHistory = state.history.filter(h => h.day === today);
+  if (!todayHistory.length) {
+    list.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Sin registros todavía</p>';
+    return;
+  }
+  list.innerHTML = todayHistory.slice(0, 20).map(h => {
+    const d = new Date(h.ts);
+    const time = d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+    const r = h.rates;
+    return `
+      <div class="flex items-center justify-between gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 text-xs sm:text-sm">
+        <span class="text-slate-500 dark:text-slate-400 font-mono shrink-0">${time}</span>
+        <div class="flex flex-wrap gap-2 justify-end">
+          ${r.bcv ? `<span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold">BCV ${fmtVES.format(r.bcv)}</span>` : ''}
+          ${r.euro ? `<span class="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold">EUR ${fmtVES.format(r.euro)}</span>` : ''}
+          ${r.binance ? `<span class="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-semibold">BNB ${fmtVES.format(r.binance)}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONVERSOR MÚLTIPLE
+   ═══════════════════════════════════════════════════════════ */
+function updateAll() {
+  updateMultiConverter();
+  updateCompareTable();
+}
+
+function updateMultiConverter() {
+  const amount = parseAmount($('#multiAmount').value);
+  const from = $('#multiFrom').value;
+
+  const results = {
+    bcv: null, euro: null, binance: null, equivBs: 0,
+  };
+
+  // Valor base en Bs
+  let baseBs = 0;
+  if (from === 'VES') {
+    baseBs = amount;
+  } else if (from === 'EUR') {
+    // De EUR → Bs usando tasa euro, o si no, bcv
+    const eurRate = state.rates.euro;
+    if (eurRate) baseBs = amount * eurRate;
+  } else {
+    // USD o USDT → Bs usando BCV (para USD) o Binance (para USDT)
+    const rate = from === 'USDT' ? state.rates.binance : state.rates.bcv;
+    if (rate) baseBs = amount * rate;
+  }
+
+  results.equivBs = baseBs;
+
+  // Desde Bs → cada divisa
+  if (baseBs > 0) {
+    if (state.rates.bcv) results.bcv = baseBs / state.rates.bcv;
+    if (state.rates.euro) results.euro = baseBs / state.rates.euro;
+    if (state.rates.binance) results.binance = baseBs / state.rates.binance;
+  }
+
+  const setText = (id, val, sub, fmtFn) => {
+    const el = $(id);
+    const subEl = $(`${id}-sub`);
+    if (val === null) {
+      el.textContent = '—';
+      subEl.textContent = '—';
+    } else {
+      el.textContent = fmtFn(val);
+      subEl.textContent = sub;
+    }
+  };
+
+  setText('#multi-bcv', results.bcv, state.rates.bcv ? `Tasa: ${fmtVES.format(state.rates.bcv)}` : '', formatUsd);
+  setText('#multi-euro', results.euro, state.rates.euro ? `Tasa: ${fmtVES.format(state.rates.euro)}` : '', formatEur);
+  setText('#multi-binance', results.binance, state.rates.binance ? `Tasa: ${fmtVES.format(state.rates.binance)}` : '', (n) => n.toFixed(4) + ' ₮');
+  $('#multi-equiv').textContent = baseBs ? formatBs(baseBs) : '—';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TABLA COMPARATIVA
+   ═══════════════════════════════════════════════════════════ */
+function updateCompareTable() {
+  const amount = parseAmount($('#compareAmount').value);
+  const currency = $('#compareCurrency').value;
+  const tbody = $('#compareTableBody');
+
+  if (!amount) {
+    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Ingresa un monto</td></tr>';
+    return;
+  }
+
+  // Si la moneda base es Bs, comparamos cuánto se obtiene en cada divisa
+  // Si la moneda base es USD/EUR/USDT, comparamos cuántos Bs se obtienen
+  const isFromBs = currency === 'VES';
+
+  const tasas = [
+    { key: 'bcv',     label: '🏛️ BCV',     color: 'text-emerald-600 dark:text-emerald-400', rate: state.rates.bcv },
+    { key: 'euro',    label: '💶 Euro',    color: 'text-blue-600 dark:text-blue-400',       rate: state.rates.euro },
+    { key: 'binance', label: '🪙 Binance', color: 'text-amber-600 dark:text-amber-400',     rate: state.rates.binance },
+  ];
+
+  const rows = tasas.map(t => {
+    if (!t.rate) return null;
+
+    let obtains;
+    if (isFromBs) {
+      // Bs → divisa: amount / rate
+      obtains = amount / t.rate;
+    } else {
+      // Divisa → Bs: amount * rate
+      obtains = amount * t.rate;
+    }
+    return { ...t, obtains };
+  }).filter(Boolean);
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Tasas no disponibles</td></tr>';
+    return;
+  }
+
+  // Determinar el "mejor":
+  // - Si es Bs → divisa: mayor cantidad de divisas obtenidas es mejor
+  // - Si es divisa → Bs: mayor cantidad de Bs obtenidos es mejor (en términos nominales)
+  const maxObtains = Math.max(...rows.map(r => r.obtains));
+
+  // Formato
+  const fmtObtains = (r) => {
+    if (isFromBs) {
+      if (r.key === 'euro') return formatEur(r.obtains);
+      if (r.key === 'binance') return r.obtains.toFixed(4) + ' ₮';
+      return formatUsd(r.obtains);
+    } else {
+      return formatBs(r.obtains);
+    }
+  };
+
+  // Para diferencia porcentual, comparamos contra el mejor
+  const isBest = (r) => Math.abs(r.obtains - maxObtains) < 0.0001;
+
+  tbody.innerHTML = rows.map(r => {
+    const diff = ((r.obtains - maxObtains) / maxObtains) * 100;
+    const diffText = isBest(r) ? '—' : `${diff.toFixed(2)}%`;
+    const diffColor = isBest(r) ? 'text-slate-400' :
+      (diff < 0 ? 'text-red-500 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400');
+
+    const bestBadge = isBest(r)
+      ? '<span class="inline-flex items-center justify-center text-lg">⭐</span>'
+      : '<span class="text-slate-300 dark:text-slate-600">—</span>';
+
+    const rowBg = isBest(r) ? 'bg-emerald-50/70 dark:bg-emerald-950/30' : '';
+
+    return `
+      <tr class="${rowBg} transition-colors">
+        <td class="px-4 py-3 font-bold ${r.color}">${r.label}</td>
+        <td class="px-4 py-3 text-right font-mono text-slate-600 dark:text-slate-300">${fmtVES.format(r.rate)}</td>
+        <td class="px-4 py-3 text-right font-extrabold text-slate-900 dark:text-white tabular-nums">${fmtObtains(r)}</td>
+        <td class="px-4 py-3 text-right font-semibold ${diffColor} tabular-nums">${diffText}</td>
+        <td class="px-4 py-3 text-center">${bestBadge}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ALERTAS
+   ═══════════════════════════════════════════════════════════ */
+function checkAlerts() {
+  if (!state.alerts.enabled) return;
+
+  const dir = state.alerts.direction;
+  const labels = { bcv: 'BCV', euro: 'Euro', binance: 'Binance' };
+
+  Object.keys(state.alerts.thresholds).forEach(key => {
+    const threshold = state.alerts.thresholds[key];
+    const current = state.rates[key];
+    if (threshold == null || current == null) return;
+
+    const triggered = dir === 'above' ? current > threshold : current < threshold;
+
+    if (triggered) {
+      // Anti-spam: sólo notifica si no se ha notificado en la última hora
+      const last = state.alerts.lastTriggered[key];
+      const oneHourAgo = Date.now() - 60 * 60 * 1000;
+      if (last && last > oneHourAgo) return;
+
+      state.alerts.lastTriggered[key] = Date.now();
+      const message = `${labels[key]}: ${fmtVES.format(current)} Bs ${dir === 'above' ? 'superó' : 'bajó de'} ${fmtVES.format(threshold)} Bs`;
+
+      registerAlertEvent(key, message, current, threshold);
+      showToast(`🔔 ${message}`, 'warn');
+      sendPushNotification(`Alerta ${labels[key]}`, message);
+      animateBell();
+    }
+  });
+
+  saveAlerts();
+}
+
+function registerAlertEvent(key, message, value, threshold) {
+  const event = {
+    ts: Date.now(),
+    key,
+    message,
+    value,
+    threshold,
+  };
+  state.alertEvents.unshift(event);
+  if (state.alertEvents.length > 100) state.alertEvents.pop();
+  saveAlertEvents();
+  renderAlertEvents();
+}
+
+function renderAlertEvents() {
+  const container = $('#alertEvents');
+  if (!state.alertEvents.length) {
+    container.innerHTML = '<p class="text-sm text-slate-400 text-center py-3">Sin eventos de alerta</p>';
+    return;
+  }
+  container.innerHTML = state.alertEvents.slice(0, 15).map(e => {
+    const d = new Date(e.ts);
+    const time = d.toLocaleString('es-VE', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+    const labels = { bcv: '🏛️ BCV', euro: '💶 Euro', binance: '🪙 Binance' };
+    return `
+      <div class="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/50">
+        <span class="text-lg shrink-0">🔔</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-amber-800 dark:text-amber-200">${labels[e.key] || e.key}</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 break-words">${e.message}</p>
+        </div>
+        <span class="text-xs text-slate-400 font-mono shrink-0">${time}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function animateBell() {
+  const btn = $('#notifPermissionBtn');
+  if (!btn) return;
+  btn.classList.add('animate-bell-shake');
+  setTimeout(() => btn.classList.remove('animate-bell-shake'), 700);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NOTIFICACIONES PUSH
+   ═══════════════════════════════════════════════════════════ */
+async function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    showToast('Este navegador no soporta notificaciones', 'error');
+    return false;
+  }
+  if (Notification.permission === 'granted') {
+    showToast('Notificaciones ya activadas', 'success');
+    updateNotifButton();
+    return true;
+  }
+  if (Notification.permission === 'denied') {
+    showToast('Notificaciones bloqueadas. Actívalas en el navegador.', 'error');
+    updateNotifButton();
+    return false;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    updateNotifButton();
+    if (perm === 'granted') {
+      showToast('Notificaciones activadas 🔔', 'success');
+      sendPushNotification('Tasas Venezuela', 'Recibirás alertas cuando se cumplan tus condiciones.');
+      return true;
+    } else {
+      showToast('Permiso denegado', 'error');
+      return false;
+    }
+  } catch (e) {
+    console.warn(e);
+    return false;
+  }
+}
+
+function sendPushNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    // Intenta con el SW si está activo (mejor en móviles)
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification(title, {
+          body,
+          icon: "data:image/svg+xml;base64," + btoa(
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#10b981"/><text x="50%" y="55%" font-size="280" text-anchor="middle" dominant-baseline="middle">🇻🇪</text></svg>`
+          ),
+          badge: "data:image/svg+xml;base64," + btoa(
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="20" fill="#10b981"/><text x="50%" y="60%" font-size="56" text-anchor="middle" dominant-baseline="middle">🇻🇪</text></svg>`
+          ),
+          tag: 'tasas-venezuela',
+          renotify: true,
+        });
+      }).catch(() => new Notification(title, { body }));
+    } else {
+      new Notification(title, { body });
+    }
+  } catch (e) {
+    console.warn('No se pudo enviar notificación:', e);
+  }
+}
+
+function updateNotifButton() {
+  const btn = $('#notifPermissionBtn');
+  const label = $('#notifPermLabel');
+  if (!btn || !('Notification' in window)) {
+    if (btn) btn.classList.add('hidden');
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    btn.classList.add('bg-emerald-100', 'dark:bg-emerald-900/40', 'text-emerald-700', 'dark:text-emerald-300');
+    if (label) label.textContent = 'Notif. activas';
+  } else if (Notification.permission === 'denied') {
+    btn.classList.add('bg-red-100', 'dark:bg-red-900/40', 'text-red-700', 'dark:text-red-300');
+    if (label) label.textContent = 'Notif. bloqueadas';
+  } else {
+    if (label) label.textContent = 'Activar notif.';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GRÁFICO (Chart.js)
+   ═══════════════════════════════════════════════════════════ */
+function renderChart() {
+  const cutoff = Date.now() - state.chartRange * 60 * 60 * 1000;
+  const filtered = state.history.filter(h => h.ts >= cutoff).sort((a, b) => a.ts - b.ts);
+
+  const canvas = $('#trendChart');
+  const empty = $('#chartEmpty');
+  const container = canvas.parentElement;
+
+  if (filtered.length < 2) {
+    container.style.display = 'none';
+    empty.classList.remove('hidden');
+    if (state.chart) { state.chart.destroy(); state.chart = null; }
+    return;
+  }
+  container.style.display = 'block';
+  empty.classList.add('hidden');
+
+  const labels = filtered.map(h => {
+    const d = new Date(h.ts);
+    return d.toLocaleString('es-VE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  });
+
+  const isDark = document.documentElement.classList.contains('dark');
+  const gridColor = isDark ? 'rgba(148,163,184,0.15)' : 'rgba(100,116,139,0.15)';
+  const textColor = isDark ? '#cbd5e1' : '#475569';
+
+  const datasets = [
+    { label: 'BCV', data: filtered.map(h => h.rates.bcv), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)' },
+    { label: 'Euro', data: filtered.map(h => h.rates.euro), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)' },
+    { label: 'Binance', data: filtered.map(h => h.rates.binance), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)' },
+  ].map(d => ({ ...d, tension: 0.35, spanGaps: true, pointRadius: 0, pointHoverRadius: 5, borderWidth: 2.5 }));
+
+  if (state.chart) {
+    state.chart.data.labels = labels;
+    state.chart.data.datasets.forEach((ds, i) => { ds.data = datasets[i].data; });
+    state.chart.options.scales.x.ticks.color = textColor;
+    state.chart.options.scales.y.ticks.color = textColor;
+    state.chart.options.scales.x.grid.color = gridColor;
+    state.chart.options.scales.y.grid.color = gridColor;
+    state.chart.options.plugins.legend.labels.color = textColor;
+    state.chart.update('none');
+    return;
+  }
+
+  const ctx = canvas.getContext('2d');
+  state.chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: textColor, font: { family: 'Inter', weight: '600' }, usePointStyle: true, boxWidth: 8 } },
+        tooltip: {
+          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+          titleColor: isDark ? '#f1f5f9' : '#0f172a',
+          bodyColor: isDark ? '#cbd5e1' : '#334155',
+          borderColor: isDark ? '#334155' : '#e2e8f0',
+          borderWidth: 1, padding: 12,
+          callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtVES.format(ctx.parsed.y)} Bs` },
+        },
+      },
+      scales: {
+        x: { ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 } }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font: { size: 10 }, callback: (v) => fmtVES.format(v) }, grid: { color: gridColor } },
+      },
+    },
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EXPORTAR CSV
+   ═══════════════════════════════════════════════════════════ */
+function exportCSV() {
+  const today = todayKey();
+  const rows = state.history.filter(h => h.day === today);
+  if (!rows.length) { showToast('No hay datos de hoy para exportar', 'error'); return; }
+
+  const header = ['Fecha', 'Hora', 'BCV (Bs/USD)', 'Euro (Bs/EUR)', 'Binance (Bs/USDT)'];
+  const csvRows = rows.sort((a, b) => a.ts - b.ts).map(h => {
+    const d = new Date(h.ts);
+    return [d.toLocaleDateString('es-VE'), d.toLocaleTimeString('es-VE', { hour12: false }), h.rates.bcv ?? '', h.rates.euro ?? '', h.rates.binance ?? ''];
+  });
+
+  const csvContent = [header, ...csvRows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tasas-venezuela-${today}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`CSV exportado (${rows.length} registros)`, 'success');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TEMA
+   ═══════════════════════════════════════════════════════════ */
+function applyTheme(theme) {
+  const html = document.documentElement;
+  if (theme === 'dark') { html.classList.add('dark'); $('#themeIcon').textContent = '☀️'; }
+  else { html.classList.remove('dark'); $('#themeIcon').textContent = '🌙'; }
+  if (state.chart) { state.chart.destroy(); state.chart = null; renderChart(); }
+}
+function initTheme() {
+  const saved = localStorage.getItem(CONFIG.storageKeys.theme);
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EVENTOS
+   ═══════════════════════════════════════════════════════════ */
+function bindEvents() {
+  $('#refreshBtn').addEventListener('click', async () => {
+    const icon = $('#refreshIcon');
+    icon.classList.add('animate-spin');
+    await fetchAllRates();
+    setTimeout(() => icon.classList.remove('animate-spin'), 500);
+    showToast('Tasas actualizadas', 'success');
+  });
+
+  $('#themeToggle').addEventListener('click', () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark');
+    localStorage.setItem(CONFIG.storageKeys.theme, isDark ? 'light' : 'dark');
+  });
+
+  // Notificaciones
+  $('#notifPermissionBtn').addEventListener('click', requestNotifPermission);
+
+  // Conversor múltiple
+  $('#multiAmount').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^\d.,]/g, '');
+    updateMultiConverter();
+  });
+  $('#multiFrom').addEventListener('change', updateMultiConverter);
+
+  // Tabla comparativa
+  $('#compareAmount').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^\d.,]/g, '');
+    updateCompareTable();
+  });
+  $('#compareCurrency').addEventListener('change', updateCompareTable);
+
+  // Copiar resultados múltiples
+  $$('.copy-multi-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.copyMulti;
+      const el = $(`#multi-${key}`);
+      if (el && el.textContent && el.textContent !== '—') {
+        await navigator.clipboard.writeText(el.textContent);
+        showToast('Copiado al portapapeles', 'success');
+      }
+    });
+  });
+
+  // Copiar tasas
+  $$('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.copy;
+      const val = state.rates[key];
+      if (!val) return;
+      await navigator.clipboard.writeText(`${fmtVES.format(val)} Bs`);
+      showToast(`Tasa ${key.toUpperCase()} copiada`, 'success');
+    });
+  });
+
+  // Alertas
+  $('#alertsEnabled').addEventListener('change', (e) => {
+    state.alerts.enabled = e.target.checked;
+    $('#alertsEnabledLabel').textContent = e.target.checked ? 'Activadas' : 'Desactivadas';
+    if (e.target.checked) {
+      // Pide permiso para notificaciones al activar
+      if ('Notification' in window && Notification.permission === 'default') {
+        requestNotifPermission();
+      }
+    }
+    saveAlerts();
+    if (e.target.checked) checkAlerts();
+  });
+
+  ['bcv', 'euro', 'binance'].forEach(key => {
+    $(`#alertThreshold-${key}`).addEventListener('input', (e) => {
+      const v = e.target.value.trim();
+      state.alerts.thresholds[key] = v === '' ? null : parseFloat(v);
+      saveAlerts();
+    });
+  });
+
+  $$('input[name="alertDirection"]').forEach(r => {
+    r.addEventListener('change', () => {
+      state.alerts.direction = r.value;
+      saveAlerts();
+    });
+  });
+
+  // Historial
+  $('#clearHistory').addEventListener('click', () => {
+    if (!confirm('¿Seguro que quieres borrar todo el historial guardado?')) return;
+    state.history = [];
+    saveHistory();
+    renderHistory();
+    renderChart();
+    showToast('Historial limpiado', 'success');
+  });
+  $('#exportCSV').addEventListener('click', exportCSV);
+
+  // Rango gráfico
+  $$('.range-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.chartRange = parseInt(btn.dataset.range, 10);
+      $$('.range-btn').forEach(b => {
+        b.classList.remove('bg-indigo-500', 'text-white');
+        b.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-600', 'dark:text-slate-300');
+      });
+      btn.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-600', 'dark:text-slate-300');
+      btn.classList.add('bg-indigo-500', 'text-white');
+      renderChart();
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PWA
+   ═══════════════════════════════════════════════════════════ */
+function setupPWA() {
+  const manifest = {
+    name: 'Dashboard Tasas Venezuela',
+    short_name: 'Tasas VE',
+    description: 'Dashboard con tasas BCV, Euro y Binance. Conversor, alertas y notificaciones.',
+    start_url: '.',
+    scope: '.',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#0f172a',
+    theme_color: '#10b981',
+    lang: 'es-VE',
+    icons: [{
+      src: "data:image/svg+xml;base64," + btoa(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#10b981"/><text x="50%" y="55%" font-size="280" text-anchor="middle" dominant-baseline="middle">🇻🇪</text></svg>`
+      ),
+      sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable',
+    }],
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = URL.createObjectURL(manifestBlob);
+  document.head.appendChild(link);
+
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE = 'tasas-ve-v2';
+      const ASSETS = [
+        './',
+        'https://cdn.tailwindcss.com',
+        'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+      ];
+
+      self.addEventListener('install', (e) => {
+        e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS).catch(() => {})));
+        self.skipWaiting();
+      });
+
+      self.addEventListener('activate', (e) => {
+        e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))));
+        self.clients.claim();
+      });
+
+      self.addEventListener('fetch', (e) => {
+        const { request } = e;
+        if (request.method !== 'GET') return;
+        const url = new URL(request.url);
+
+        if (url.hostname.includes('dolarapi') || url.hostname.includes('pydolarve')) {
+          e.respondWith(
+            fetch(request).then((res) => {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(request, copy));
+              return res;
+            }).catch(() => caches.match(request))
+          );
+          return;
+        }
+
+        e.respondWith(
+          caches.match(request).then((cached) => {
+            if (cached) return cached;
+            return fetch(request).then((res) => {
+              if (res.ok && url.origin === self.location.origin) {
+                const copy = res.clone();
+                caches.open(CACHE).then((c) => c.put(request, copy));
+              }
+              return res;
+            }).catch(() => cached);
+          })
+        );
+      });
+
+      self.addEventListener('notificationclick', (e) => {
+        e.notification.close();
+        e.waitUntil(
+          self.clients.matchAll({ type: 'window' }).then((clients) => {
+            if (clients.length) return clients[0].focus();
+            return self.clients.openWindow('./');
+          })
+        );
+      });
+    `;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob), { scope: './' })
+      .then(() => { $('#swStatus').textContent = '✅ Service Worker activo — funciona offline'; })
+      .catch((err) => {
+        console.warn('SW no registrado:', err);
+        $('#swStatus').textContent = '⚠️ Service Worker no disponible';
+      });
+  } else {
+    $('#swStatus').textContent = '⚠️ Service Worker no soportado';
+  }
+
+  let deferredPrompt = null;
+  const installBtn = $('#installBtn');
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.classList.remove('hidden');
+    installBtn.classList.add('flex');
+  });
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') showToast('App instalada 🎉', 'success');
+    deferredPrompt = null;
+    installBtn.classList.add('hidden');
+  });
+  window.addEventListener('appinstalled', () => {
+    installBtn.classList.add('hidden');
+    showToast('App instalada correctamente', 'success');
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INICIALIZACIÓN
+   ═══════════════════════════════════════════════════════════ */
+function init() {
+  initTheme();
+  bindEvents();
+  setupPWA();
+  updateNotifButton();
+
+  // Cargar alertas guardadas
+  const savedAlerts = loadAlerts();
+  if (savedAlerts) {
+    state.alerts = { ...state.alerts, ...savedAlerts };
+    $('#alertsEnabled').checked = state.alerts.enabled;
+    $('#alertsEnabledLabel').textContent = state.alerts.enabled ? 'Activadas' : 'Desactivadas';
+    ['bcv', 'euro', 'binance'].forEach(k => {
+      if (state.alerts.thresholds[k] != null) {
+        $(`#alertThreshold-${k}`).value = state.alerts.thresholds[k];
+      }
+    });
+    const dirInput = document.querySelector(`input[name="alertDirection"][value="${state.alerts.direction}"]`);
+    if (dirInput) dirInput.checked = true;
+  }
+
+  state.alertEvents = loadAlertEvents();
+  renderAlertEvents();
+
+  const cached = loadCachedRates();
+  if (cached) {
+    state.rates = cached.rates;
+    renderRates();
+    updateAll();
+    setLastUpdate(new Date(cached.ts));
+    setStatus('warn', 'Mostrando datos en caché...');
+  }
+
+  state.history = loadHistory();
+  renderHistory();
+  renderChart();
+
+  fetchAllRates();
+  setInterval(fetchAllRates, CONFIG.refreshIntervalMs);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
