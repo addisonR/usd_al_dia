@@ -1232,16 +1232,14 @@ function bindEvents() {
 /* ═══════════════════════════════════════════════════════════
    PWA
    ═══════════════════════════════════════════════════════════ */
-   
-function setupPWA() {
-  const basePath = window.location.pathname; // Detecta automáticamente /usd_al_dia/ en GitHub Pages
 
+function setupPWA() {
   const manifest = {
     name: 'Dashboard Tasas Venezuela',
     short_name: 'Tasas VE',
     description: 'Dashboard con tasas BCV, Euro y Binance. Conversor, alertas y notificaciones.',
-    start_url: basePath,
-    scope: basePath,
+    start_url: './',
+    scope: './',
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#0f172a',
@@ -1259,45 +1257,17 @@ function setupPWA() {
     ]
   };
 
-  // Insertar Manifest
+  // Crear e inyectar manifiesto dinámico
   const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
   const link = document.createElement('link');
   link.rel = 'manifest';
   link.href = URL.createObjectURL(manifestBlob);
   document.head.appendChild(link);
 
-  // Service Worker vía Data URL
+  // Registrar el archivo Service Worker real
   if ('serviceWorker' in navigator) {
-    const swCode = `
-      const CACHE = 'tasas-ve-v2';
-      const ASSETS = ['./'];
-
-      self.addEventListener('install', (e) => {
-        e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).catch(() => {}));
-        self.skipWaiting();
-      });
-
-      self.addEventListener('activate', (e) => {
-        e.waitUntil(
-          caches.keys().then((keys) => 
-            Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-          )
-        );
-        self.clients.claim();
-      });
-
-      self.addEventListener('fetch', (e) => {
-        if (e.request.method !== 'GET') return;
-        e.respondWith(
-          fetch(e.request).catch(() => caches.match(e.request))
-        );
-      });
-    `;
-
-    const swDataUrl = 'data:text/javascript;base64,' + btoa(unescape(encodeURIComponent(swCode)));
-
-    navigator.serviceWorker.register(swDataUrl, { scope: basePath })
-      .then(() => console.log('Service Worker registrado con éxito'))
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Service Worker registrado correctamente'))
       .catch((err) => console.error('Error registrando Service Worker:', err));
   }
 }
