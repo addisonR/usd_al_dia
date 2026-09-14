@@ -1234,12 +1234,15 @@ function bindEvents() {
    ═══════════════════════════════════════════════════════════ */
 
 function setupPWA() {
+  // Construye la URL base absoluta exacta del sitio (ej: https://addisonr.github.io/usd_al_dia/)
+  const baseUrl = window.location.origin + window.location.pathname;
+
   const manifest = {
     name: 'Dashboard Tasas Venezuela',
     short_name: 'Tasas VE',
     description: 'Dashboard con tasas BCV, Euro y Binance. Conversor, alertas y notificaciones.',
-    start_url: './',
-    scope: './',
+    start_url: baseUrl,
+    scope: baseUrl,
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#0f172a',
@@ -1257,14 +1260,14 @@ function setupPWA() {
     ]
   };
 
-  // Crear e inyectar manifiesto dinámico
+  // Insertar Manifest
   const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
   const link = document.createElement('link');
   link.rel = 'manifest';
   link.href = URL.createObjectURL(manifestBlob);
   document.head.appendChild(link);
 
-  // Registrar el archivo Service Worker real
+  // Registrar Service Worker (se mantiene igual como lo tienes)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(() => console.log('Service Worker registrado correctamente'))
