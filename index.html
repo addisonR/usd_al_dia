@@ -1232,122 +1232,74 @@ function bindEvents() {
 /* ═══════════════════════════════════════════════════════════
    PWA
    ═══════════════════════════════════════════════════════════ */
+   
 function setupPWA() {
+  const basePath = window.location.pathname; // Detecta automáticamente /usd_al_dia/ en GitHub Pages
+
   const manifest = {
     name: 'Dashboard Tasas Venezuela',
     short_name: 'Tasas VE',
     description: 'Dashboard con tasas BCV, Euro y Binance. Conversor, alertas y notificaciones.',
-    start_url: '.',
-    scope: '.',
+    start_url: basePath,
+    scope: basePath,
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#0f172a',
     theme_color: '#10b981',
     lang: 'es-VE',
-    icons: [{
-      src: "data:image/svg+xml;utf8," + encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#10b981"/><text x="50%" y="50%" font-size="200" text-anchor="middle" dy=".3em" fill="#ffffff">💵</text></svg>`
-    ),
-      sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable',
-    }],
+    icons: [
+      {
+        src: "data:image/svg+xml;utf8," + encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#10b981"/><text x="50%" y="50%" font-size="200" text-anchor="middle" dy=".3em" fill="#ffffff">💵</text></svg>`
+        ),
+        sizes: '512x512',
+        type: 'image/svg+xml',
+        purpose: 'any maskable'
+      }
+    ]
   };
+
+  // Insertar Manifest
   const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
   const link = document.createElement('link');
   link.rel = 'manifest';
   link.href = URL.createObjectURL(manifestBlob);
   document.head.appendChild(link);
 
+  // Service Worker vía Data URL
   if ('serviceWorker' in navigator) {
     const swCode = `
       const CACHE = 'tasas-ve-v2';
-      const ASSETS = [
-        './',
-        'https://cdn.tailwindcss.com',
-        'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
-        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
-      ];
+      const ASSETS = ['./'];
 
       self.addEventListener('install', (e) => {
-        e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS).catch(() => {})));
+        e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).catch(() => {}));
         self.skipWaiting();
       });
 
       self.addEventListener('activate', (e) => {
-        e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))));
+        e.waitUntil(
+          caches.keys().then((keys) => 
+            Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+          )
+        );
         self.clients.claim();
       });
 
       self.addEventListener('fetch', (e) => {
-        const { request } = e;
-        if (request.method !== 'GET') return;
-        const url = new URL(request.url);
-
-        if (url.hostname.includes('dolarapi') || url.hostname.includes('pydolarve')) {
-          e.respondWith(
-            fetch(request).then((res) => {
-              const copy = res.clone();
-              caches.open(CACHE).then((c) => c.put(request, copy));
-              return res;
-            }).catch(() => caches.match(request))
-          );
-          return;
-        }
-
+        if (e.request.method !== 'GET') return;
         e.respondWith(
-          caches.match(request).then((cached) => {
-            if (cached) return cached;
-            return fetch(request).then((res) => {
-              if (res.ok && url.origin === self.location.origin) {
-                const copy = res.clone();
-                caches.open(CACHE).then((c) => c.put(request, copy));
-              }
-              return res;
-            }).catch(() => cached);
-          })
-        );
-      });
-
-      self.addEventListener('notificationclick', (e) => {
-        e.notification.close();
-        e.waitUntil(
-          self.clients.matchAll({ type: 'window' }).then((clients) => {
-            if (clients.length) return clients[0].focus();
-            return self.clients.openWindow('./');
-          })
+          fetch(e.request).catch(() => caches.match(e.request))
         );
       });
     `;
-    const swBlob = new Blob([swCode], { type: 'application/javascript' });
-    navigator.serviceWorker.register(URL.createObjectURL(swBlob), { scope: './' })
-      .then(() => { $('#swStatus').textContent = '✅ Service Worker activo — funciona offline'; })
-      .catch((err) => {
-        console.warn('SW no registrado:', err);
-        $('#swStatus').textContent = '⚠️ Service Worker no disponible';
-      });
-  } else {
-    $('#swStatus').textContent = '⚠️ Service Worker no soportado';
-  }
 
-  let deferredPrompt = null;
-  const installBtn = $('#installBtn');
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installBtn.classList.remove('hidden');
-    installBtn.classList.add('flex');
-  });
-  installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') showToast('App instalada 🎉', 'success');
-    deferredPrompt = null;
-    installBtn.classList.add('hidden');
-  });
-  window.addEventListener('appinstalled', () => {
-    installBtn.classList.add('hidden');
-    showToast('App instalada correctamente', 'success');
-  });
+    const swDataUrl = 'data:text/javascript;base64,' + btoa(unescape(encodeURIComponent(swCode)));
+
+    navigator.serviceWorker.register(swDataUrl, { scope: basePath })
+      .then(() => console.log('Service Worker registrado con éxito'))
+      .catch((err) => console.error('Error registrando Service Worker:', err));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
